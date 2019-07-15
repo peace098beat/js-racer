@@ -74,7 +74,8 @@ function drawCircle(p1, r) {
     ctx.fill();
 }
 
-function drawLine(p1, p2) {
+function drawLine(p1, p2, strokeStyle) {
+    ctx.strokeStyle=strokeStyle;
     ctx.beginPath();
     ctx.moveTo(p1.x, p1.y);
     ctx.lineTo(p2.x, p2.y);
@@ -157,6 +158,27 @@ var Node = function () {
 
     this.draw = function(){
         drawNode(this);
+        // draw force line
+        {
+
+            let p1 = this.p;
+            let p2 = {
+                x: this.p.x + this.old_F.x,
+                y: this.p.y
+            };
+            let strokeStyle = "rgba(200, 0, 0, 0.2)";
+            drawLine(p1, p2, strokeStyle);
+        }
+        {
+
+            let p1 = this.p;
+            let p2 = {
+                x: this.p.x,
+                y: this.p.y + this.old_F.y
+            };
+            let strokeStyle = "rgba(200, 0, 0, 0.2)";
+            // drawLine(p1, p2, strokeStyle);
+        }
     }
 
     this.update = function () {
@@ -172,6 +194,7 @@ var Node = function () {
         this.p.x += this.v.x * dt;
         this.p.y += this.v.y * dt;
 
+        this.old_F = {x:this.F.x, y:this.F.y};
         this.F = { x: 0, y: 0 }; // init
     };
 
@@ -193,8 +216,9 @@ console.assert((new Node()).distance({ x: 10, y: 0 }) == 10);
 */
 var Tire = function(parent_node) {
     this.parent = parent_node;
-    this.radius = 10;
-    this.divide_n = 6;
+    this.radius = 40;
+    this.divide_n = 4;
+    this.M = 10;
 
     this.Torq = 3000;
 
@@ -202,7 +226,7 @@ var Tire = function(parent_node) {
     this.nodes = new Array();
     for(let i=0; i<this.divide_n; i++){
         let n1 = new TireNode();
-        n1.M = 10;
+        n1.M = this.M / this.divide_n;
         this.nodes.push(n1);
 
         let cx = this.parent.p.x;
@@ -255,7 +279,8 @@ var Tire = function(parent_node) {
         // ノードを表示
         for(let i=0; i<this.divide_n; i++){
             let n = this.nodes[i];
-            drawNode(n);
+            // drawNode(n);
+            n.draw();
         }
         // スポークを表示
         for(let i=0; i<this.divide_n; i++) {
@@ -266,6 +291,8 @@ var Tire = function(parent_node) {
             let rim = this.rims[i];
             drawLink(rim);
         }
+
+
     }
 
 }
@@ -289,6 +316,26 @@ var TireNode = function () {
 
     this.draw = function () {
         drawNode(this);
+        {
+
+            let p1 = this.p;
+            let p2 = {
+                x: this.p.x + this.old_F.x,
+                y: this.p.y
+            };
+            let strokeStyle = "rgba(200, 0, 0, 0.2)";
+            drawLine(p1, p2, strokeStyle);
+        }
+        {
+
+            let p1 = this.p;
+            let p2 = {
+                x: this.p.x,
+                y: this.p.y + this.old_F.y
+            };
+            let strokeStyle = "rgba(200, 0, 0, 0.2)";
+            drawLine(p1, p2, strokeStyle);
+        }
     }
 
     this.update = function () {
@@ -304,6 +351,7 @@ var TireNode = function () {
         this.p.x += this.v.x * dt;
         this.p.y += this.v.y * dt;
 
+        this.old_F = {x:this.F.x, y:this.F.y};
         this.F = { x: 0, y: 0 }; // init
     };
 
@@ -335,7 +383,7 @@ var Link = function(n1, n2) {
     // 描画設定
     this.view = {
         width: 1,
-        strokeStyle: "rgba(0, 200, 0, 0.9)"
+        strokeStyle: "rgba(0, 200, 0, 0.2)"
     }
     this.draw = function(){
         drawLink(this);
@@ -414,8 +462,8 @@ function init() {
         let dx = canvas.width / (roads.length-1);
         let x = dx * i;
         road.p.x = x;
-        road.p.y =(H / 2);
-        road.p.y += Math.random() * 50;
+        road.p.y =(canvas.height / 2);
+        // road.p.y += Math.random() * 50;
         // road.p.y = (1 / 2 * x) + (H / 2);
         // if(i > roads.length/2) {
         //     road.p.y = (- 2 / 4 * x) + 2*(H / 2);
@@ -423,17 +471,28 @@ function init() {
         roads[i] = road;
     }
 
-
-    // 2. Tire Object
+    // Puller
+    puller = new Node();
+    puller.p.x = canvas.width / 8 + 30;
+    puller.p.y = canvas.height / 2 ;
+    puller.g = 0;
+    
+    // 2. Tire Parent
     parent = new Node();
     parent.p.x = canvas.width / 8 ;
-    parent.p.y = canvas.height / 2;
-    // parent.g = 0;
+    parent.p.y = canvas.height / 2 - 50;
+    parent.g = 0;
 
+    l = new Link(parent, puller);
+    l.K = 2;
+    l.X0 = 30;
+    
+    // 2. Tire Object
     tire1 = new Tire(parent);
 
     nodes = tire1.nodes;
     nodes.push(parent);
+    nodes.push(puller);
 
     
 }
@@ -443,7 +502,7 @@ function init() {
 // *********************************************************** \\
 function render() {
     counter += 1;
-    if(counter > 1000) {
+    if(counter > 10000) {
         init()
     };
 
@@ -496,30 +555,34 @@ function render() {
     // Tire以外のノードの、合力計算
     // ※ なぜかDummpingの符号が異なる. 速度の方向の問題.
     {
-        let node = parent;
-        // nodeがlinksから受ける力の総和を計算
-        let links = node.links;
-        for (let j = 0; j < links.length; j++) {
-            // linkのひずみを算出
-            let link = links[j];
-            let dl = link.get_dl();
-            // ひずみから張力を算出
-            let T = link.K * dl;
-            // 自分からlink先ノードへの方向ベクトルを算出
-            let dir = link.get_direction_vector(node);
+        let ohter_nodes = [parent, puller];
+        for (let i=0; i<ohter_nodes.length; i++){
+            let node = ohter_nodes[i];
+            // nodeがlinksから受ける力の総和を計算
+            let links = node.links;
+            for (let j = 0; j < links.length; j++) {
+                // linkのひずみを算出
+                let link = links[j];
+                let dl = link.get_dl();
+                // ひずみから張力を算出
+                let T = link.K * dl;
+                // 自分からlink先ノードへの方向ベクトルを算出
+                let dir = link.get_direction_vector(node);
 
-            let Fx = T * dir.x;
-            let Fy = T * dir.y;
+                let Fx = T * dir.x;
+                let Fy = T * dir.y;
 
-            node.F.x += Fx;
-            node.F.y += Fy;
+                node.F.x += Fx;
+                node.F.y += Fy;
 
-            // dumping
-            let dV = link.get_dV();
-            node.F.x -= link.D * dV.x;
-            node.F.y -= link.D * dV.y;
+                // dumping
+                let dV = link.get_dV();
+                node.F.x -= link.D * dV.x;
+                node.F.y -= link.D * dV.y;
 
+            }
         }
+
     }
 
 
@@ -547,7 +610,7 @@ function render() {
 
             if( r1.p.y < n1.p.y || r2.p.y < n1.p.y) {
             }else{
-                console.log("skip");
+                // console.log("skip");
                 continue;
             }
 
@@ -568,6 +631,8 @@ function render() {
             }else{
             }
             
+            drawCircle(n1.p, 8);
+
             // 反力発生
             // --
             let theta = (a1*b1 + a2*b2) / (La * Lb);
@@ -591,7 +656,7 @@ function render() {
             let Dy = nr12_p.y / normLength(nr12_p);
 
             // 反力反映
-            n1.F.x += Fr * Dx;
+            // n1.F.x += Fr * Dx;
             n1.F.y += Fr * Dy;
 
             n1.F.x -= road.D * n1.v.x;
@@ -618,14 +683,16 @@ function render() {
         let dir = vectorDirect(p1, cg);
         let Fv = rotateVector(dir, -Math.PI/2);
         
-        drawLine(p1, vecAdd(p1, Fv));
+        // drawLine(p1, vecAdd(p1, Fv));
 
         let F = tire1.Torq / tire1.radius;
 
-        node.F.x += F * Fv.x;
-        node.F.y += F * Fv.y;
+        // node.F.x += F * Fv.x;
+        // node.F.y += F * Fv.y;
 
     }
+
+    puller.F.x += 1000;
 
     // update
     // =-----------------------------------
@@ -636,9 +703,9 @@ function render() {
 
     // Draw
     // ------------------------------------
-    tire1.draw();
     drawRoads(roads);
-
+    tire1.draw();
+    drawLink(l);
 
     // 境界判定
     // =-----------------------------------
@@ -675,7 +742,7 @@ window.onload = function () {
     FPS = 30;
     ANIUM_DT = 1 / FPS;
 
-    SIM_FPS = 30;
+    SIM_FPS = 200;
     SIM_DT = 1 / SIM_FPS;
 
     setInterval(render, ANIUM_DT);
