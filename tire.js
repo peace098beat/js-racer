@@ -6,6 +6,9 @@
  * 
  * [実際のサンプル - translate() メソッド - Canvasリファレンス - HTML5.JP](http://www.html5.jp/canvas/ref/method/sample/translate.html)
  * 
+ * 2019/07/14: タイヤが転がるまで実装。
+ * 
+ * 2019 T.Nohara
 */
 
 /**
@@ -444,6 +447,8 @@ function render() {
         init()
     };
 
+    // debug
+
     // 0. Overray
     // -----------
     ctx.globalCompositeOperation = "source-over";
@@ -645,50 +650,6 @@ function render() {
         }
     }
 
-
-
-    return;
-
-    // タイヤを回転させる
-    // ------------------------------------------
-    // 3nodeの重心求める
-    // let xg=0, yg=0;
-    // for (let i=0; i<nodes.length; i++){
-    //     xg += nodes[i].p.x / nodes.length;
-    //     yg += nodes[i].p.y / nodes.length;
-    // }
-    // drawCircle({x:xg, y:yg}, 3);
-
-    // // 中心からのベクトル
-    // for (let i = 0; i < nodes.length; i++) {
-    //     let node = nodes[i];
-    //     let px = node.p.x;
-    //     let py = node.p.y;
-
-    //     let vx = px - xg;
-    //     let vy = py - yg;
-    //     // drawLine({x:xg, y:yg}, {x:xg + vx, y:yg + vy});
-
-    //     let nx = vx / Math.sqrt(vx * vx + vy * vy);
-    //     let ny = vy / Math.sqrt(vx * vx + vy * vy);
-
-    //     drawLine({ x: xg, y: yg }, { x: xg + 5*nx, y: yg + 5*ny });
-
-    //     // 右に90度回転
-    //     let tx = nx * Math.cos(Math.PI / 2) - ny * Math.sin(Math.PI / 2);
-    //     let ty = nx * Math.sin(Math.PI / 2) + ny * Math.cos(Math.PI / 2);
-
-    //     node.F.x += 8000*tx;
-    //     node.F.y += 8000*ty;
-
-    //     drawLine({x:px, y:py}, {x:px + 10*tx, y: py + 10*ty});
-        
-    // }
-
-
-
-    return;
-
 }
 
 /**
@@ -703,7 +664,7 @@ window.onload = function () {
     ctx = canvas.getContext('2d');
     W = canvas.width;
     H = canvas.width;
-    // ctx.translate(0, canvas.height * 0.5);
+    // ctx.translate(180, 0);
 
     // 2. Init
     // ----------
